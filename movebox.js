@@ -1,20 +1,27 @@
-
-// Check if the necessary sensors are available
-if ('Accelerometer' in window && 'Gyroscope' in window) {
-  let accel = new Accelerometer({frequency: 60});
-  let gyro = new Gyroscope({frequency: 60});
-
+// Check if necessary sensors are available
+if ('LinearAccelerationSensor' in window && 'AbsoluteOrientationSensor' in window) {
+  const accel = new LinearAccelerationSensor({frequency: 60});
+  const orientation = new AbsoluteOrientationSensor({frequency: 60});
   let vx = 0, vy = 0; // Velocity components
   let px = window.innerWidth / 2, py = window.innerHeight / 2; // Initial position
 
-  accel.addEventListener('reading', e => {
-    // Update velocity based on acceleration
-    vx += accel.x * 0.1; // Modify the 0.1 factor to adjust sensitivity
-    vy += accel.y * 0.1;
+  orientation.addEventListener('reading', () => {
+    // Use quaternion for more accurate direction data
+    let q = orientation.quaternion;
+    
+    // Convert quaternion to degrees to understand device orientation
+    const toDegrees = angle => angle * 180 / Math.PI;
+    const roll = toDegrees(Math.atan2(2.0 * (q[0] * q[1] + q[2] * q[3]), 1.0 - 2.0 * (q[1] * q[1] + q[2] * q[2])));
+    const pitch = toDegrees(Math.asin(2.0 * (q[0] * q[2] - q[3] * q[1])));
+    const yaw = toDegrees(Math.atan2(2.0 * (q[0] * q[3] + q[1] * q[2]), 1.0 - 2.0 * (q[2] * q[2] + q[3] * q[3])));
+
+    // Assuming yaw gives the direction in horizontal plane
+    vx += accel.x * Math.cos(yaw * Math.PI / 180);
+    vy += accel.x * Math.sin(yaw * Math.PI / 180);
   });
 
-  gyro.addEventListener('reading', () => {
-    // Update box position based on velocity
+  accel.addEventListener('reading', () => {
+    // Update box position based on updated velocities considering orientation
     px += vx;
     py += vy;
 
@@ -27,7 +34,7 @@ if ('Accelerometer' in window && 'Gyroscope' in window) {
   });
 
   accel.start();
-  gyro.start();
+  orientation.start();
 } else {
-  console.log('Accelerometer or Gyroscope not supported');
+  console.log('LinearAccelerationSensor or AbsoluteOrientationSensor not supported');
 }
